@@ -1,6 +1,6 @@
-pytorch_tutorial/data
-pytorch_tutorial/model.pth
-lecture/flowers
+deeplearning/pytorch_tutorial/data
+deeplearning/pytorch_tutorial/model.pth
+deeplearning/lecture/flowers/flowers-102
 
 .DS_Store
 
