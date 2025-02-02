@@ -1,3 +1,5 @@
+# I have GitHub Copilot enabled
+
 import torch
 
 
@@ -107,3 +109,4 @@ class NearestNeighborClassifier:
         """
         labels = self.get_k_nearest_neighbor(x, k)[1]
         return labels.mean()
+
