@@ -45,7 +45,8 @@ def train(
 
     # create loss function and optimizer
     loss_func = ClassificationLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-4)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', patience=3, factor=0.3)
 
     global_step = 0
     metrics = {"train_acc": [], "val_acc": []}
@@ -61,8 +62,7 @@ def train(
         for img, label in train_data:
             img, label = img.to(device), label.to(device)
 
-            # TODO: implement training step
-            # raise NotImplementedError("Training step not implemented")
+            # training step
             optimizer.zero_grad()
             logits = model(img)
             loss = loss_func(logits, label)
@@ -88,6 +88,9 @@ def train(
         # log average train and val accuracy to tensorboard
         epoch_train_acc = torch.as_tensor(metrics["train_acc"]).mean()
         epoch_val_acc = torch.as_tensor(metrics["val_acc"]).mean()
+
+        # Reduce LR if val_acc plateaus
+        scheduler.step(epoch_val_acc)
 
         # raise NotImplementedError("Logging not implemented")
         logger.add_scalar("train_acc", epoch_train_acc.item(), global_step)

@@ -109,8 +109,9 @@ class MLPClassifierDeep(nn.Module):
         h: int = 64,
         w: int = 64,
         num_classes: int = 6,
-        hidden_dim: int = 128,
+        hidden_dim: int = 96,
         num_layers: int = 3,
+        dropout: float = 0.4,
     ):
         """
         An MLP with multiple hidden layers
@@ -129,11 +130,15 @@ class MLPClassifierDeep(nn.Module):
         # raise NotImplementedError("MLPClassifierDeep.__init__() is not implemented")
         layers = [nn.Flatten()]
         layers.append(nn.Linear(h * w * 3, hidden_dim))
+        layers.append(nn.BatchNorm1d(hidden_dim))
         layers.append(nn.ReLU())
+        layers.append(nn.Dropout(dropout))
 
         for _ in range(num_layers - 1):
             layers.append(nn.Linear(hidden_dim, hidden_dim))
+            layers.append(nn.BatchNorm1d(hidden_dim))
             layers.append(nn.ReLU())
+            layers.append(nn.Dropout(dropout))
 
         layers.append(nn.Linear(hidden_dim, num_classes))
 
@@ -152,11 +157,13 @@ class MLPClassifierDeep(nn.Module):
     
 
 class ResidualBlock(nn.Module):
-    def __init__(self, hidden_dim: int):
+    def __init__(self, hidden_dim: int, dropout: float = 0.4):
         super().__init__()
         self.layers = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
+            nn.BatchNorm1d(hidden_dim),
             nn.ReLU(),
+            nn.Dropout(dropout)
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -171,6 +178,7 @@ class MLPClassifierDeepResidual(nn.Module):
         num_classes: int = 6,
         hidden_dim: int = 128,
         num_layers: int = 3,
+        dropout: float = 0.4,
     ):
         """
         Args:
@@ -187,10 +195,12 @@ class MLPClassifierDeepResidual(nn.Module):
         # raise NotImplementedError("MLPClassifierDeepResidual.__init__() is not implemented")
         layers = [nn.Flatten()]
         layers.append(nn.Linear(h * w * 3, hidden_dim))
+        layers.append(nn.BatchNorm1d(hidden_dim))
         layers.append(nn.ReLU())
+        layers.append(nn.Dropout(dropout))
 
         for _ in range(num_layers - 1):
-            layers.append(ResidualBlock(hidden_dim))
+            layers.append(ResidualBlock(hidden_dim, dropout))
 
         layers.append(nn.Linear(hidden_dim, num_classes))
 
