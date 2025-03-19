@@ -260,7 +260,7 @@ def load_model(model_name: str, with_weights: bool = False, **model_kwargs):
             r.load_state_dict(torch.load(model_path, map_location="cpu"))
         except RuntimeError as e:
             raise AssertionError(
-                f"Failed to load {model_path.name}, make sure the default model arguments are set correctly"
+                f"Failed to load {model_path.name}, make sure the default model arguments are set correctly",
             ) from e
 
     # Limit model sizes since they will be zipped and submitted

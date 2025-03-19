@@ -2,6 +2,7 @@ deeplearning/homework_02/classification_data
 deeplearning/tutorials/data
 deeplearning/tutorials/quickstart/model.pth
 deeplearning/lecture/flowers/flowers-102
+logs
 
 .DS_Store
 
