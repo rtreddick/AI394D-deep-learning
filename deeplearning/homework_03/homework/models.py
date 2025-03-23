@@ -189,14 +189,11 @@ class Detector(torch.nn.Module):
                 - logits (b, num_classes, h, w)
                 - depth (b, h, w)
         """
-        # Normalize input
         z = (x - self.input_mean[None, :, None, None]) / self.input_std[None, :, None, None]
         
-        # Encoder
         z = self.enc1(z)
         z = self.enc2(z)
         
-        # Decoders
         logits = self.seg_dec(z)
         depth = self.depth_dec(z).squeeze(1)  # Remove channel dimension
         
@@ -215,12 +212,9 @@ class Detector(torch.nn.Module):
                 - pred: class labels {0, 1, 2} with shape (b, h, w)
                 - depth: normalized depth [0, 1] with shape (b, h, w)
         """
-        logits, raw_depth = self(x)
+        logits, depth = self(x)
         pred = logits.argmax(dim=1)
-
-        # Optional additional post-processing for depth only if needed
-        depth = raw_depth
-
+        
         return pred, depth
 
 
