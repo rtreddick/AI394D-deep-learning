@@ -136,18 +136,45 @@ class Detector(torch.nn.Module):
     ):
         """
         A single model that performs segmentation and depth regression
-
+        
         Args:
             in_channels: int, number of input channels
-            num_classes: int
+            num_classes: int, number of segmentation classes
         """
         super().__init__()
-
+        
         self.register_buffer("input_mean", torch.as_tensor(INPUT_MEAN))
         self.register_buffer("input_std", torch.as_tensor(INPUT_STD))
-
-        # TODO: implement
-        pass
+        
+        # Encoder - single conv + bn + relu per block with strided conv for downsampling
+        self.enc1 = nn.Sequential(
+            nn.Conv2d(in_channels, 32, kernel_size=3, stride=2, padding=1),  # Stride 2 for downsampling
+            nn.BatchNorm2d(32),
+            nn.ReLU()
+        )
+        
+        self.enc2 = nn.Sequential(
+            nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),  # Stride 2 for downsampling
+            nn.BatchNorm2d(64),
+            nn.ReLU()
+        )
+        
+        # Segmentation decoder
+        self.seg_dec = nn.Sequential(
+            nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1),  # Upsample
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.ConvTranspose2d(32, num_classes, kernel_size=4, stride=2, padding=1)  # Final upsampling + channels
+        )
+        
+        # Depth decoder
+        self.depth_dec = nn.Sequential(
+            nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1),  # Upsample
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.ConvTranspose2d(32, 1, kernel_size=4, stride=2, padding=1),
+            nn.Sigmoid()  # Constrain depth predictions to [0,1]
+        )
 
     def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """
@@ -156,20 +183,24 @@ class Detector(torch.nn.Module):
 
         Args:
             x (torch.FloatTensor): image with shape (b, 3, h, w) and vals in [0, 1]
-
+            
         Returns:
             tuple of (torch.FloatTensor, torch.FloatTensor):
                 - logits (b, num_classes, h, w)
                 - depth (b, h, w)
         """
-        # optional: normalizes the input
+        # Normalize input
         z = (x - self.input_mean[None, :, None, None]) / self.input_std[None, :, None, None]
-
-        # TODO: replace with actual forward pass
-        logits = torch.randn(x.size(0), 3, x.size(2), x.size(3))
-        raw_depth = torch.rand(x.size(0), x.size(2), x.size(3))
-
-        return logits, raw_depth
+        
+        # Encoder
+        z = self.enc1(z)
+        z = self.enc2(z)
+        
+        # Decoders
+        logits = self.seg_dec(z)
+        depth = self.depth_dec(z).squeeze(1)  # Remove channel dimension
+        
+        return logits, depth
 
     def predict(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """
