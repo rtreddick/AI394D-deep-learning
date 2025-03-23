@@ -1,3 +1,5 @@
+# used AI coding assistant
+
 from pathlib import Path
 
 import torch
