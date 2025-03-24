@@ -82,9 +82,12 @@ def train(
             seg_logits, pred_depth = model(image)
             
             # Compute losses
+            lambda_seg = 1.0
+            lambda_depth = 1.0
+
             seg_loss = seg_loss_func(seg_logits, track)
             depth_loss = depth_loss_func(pred_depth, depth)
-            total_loss = seg_loss + depth_loss  # You may want to weight these differently
+            total_loss = lambda_seg * seg_loss + lambda_depth * depth_loss
             
             total_loss.backward()
             optimizer.step()
