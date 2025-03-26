@@ -148,84 +148,64 @@ class Detector(torch.nn.Module):
         self.register_buffer("input_mean", torch.as_tensor(INPUT_MEAN))
         self.register_buffer("input_std", torch.as_tensor(INPUT_STD))
         
-        # Encoder - single conv + bn + relu per block with strided conv for downsampling
+        # Encoder
         self.enc1 = nn.Sequential(
-            nn.Conv2d(in_channels, 64, kernel_size=3, stride=2, padding=1),  # Increased from 32 to 64
-            nn.BatchNorm2d(64),
+            nn.Conv2d(in_channels, 32, kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm2d(32),
             nn.ReLU(),
-            nn.Conv2d(64, 64, kernel_size=3, padding=1),  # Additional conv for features
-            nn.BatchNorm2d(64),
-            nn.ReLU()
         )
         
         self.enc2 = nn.Sequential(
-            nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),  # Increased from 64 to 128
-            nn.BatchNorm2d(128),
+            nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm2d(64),
             nn.ReLU(),
-            nn.Conv2d(128, 128, kernel_size=3, padding=1),  # Additional conv for features
-            nn.BatchNorm2d(128),
-            nn.ReLU()
         )
 
-        self.enc3 = nn.Sequential(  # New encoder block
-            nn.Conv2d(128, 256, kernel_size=3, stride=2, padding=1),
-            nn.BatchNorm2d(256),
+        # Encoder block 3
+        self.enc3 = nn.Sequential(
+            nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm2d(128),
             nn.ReLU(),
-            nn.Conv2d(256, 256, kernel_size=3, padding=1),
-            nn.BatchNorm2d(256),
-            nn.ReLU()
+            nn.Conv2d(128, 128, kernel_size=3, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
         )
         
         # Segmentation decoder
         self.seg_dec1 = nn.Sequential(
-            nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(),
-            nn.Conv2d(128, 128, kernel_size=3, padding=1),  # Additional conv
-            nn.BatchNorm2d(128),
-            nn.ReLU()
-        )
-
-        self.seg_dec2 = nn.Sequential(
             nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1),
             nn.BatchNorm2d(64),
             nn.ReLU(),
-            nn.Conv2d(64, 64, kernel_size=3, padding=1),  # Additional conv
+            nn.Conv2d(64, 64, kernel_size=3, padding=1),
             nn.BatchNorm2d(64),
-            nn.ReLU()
+            nn.ReLU(),
+        )
+
+        self.seg_dec2 = nn.Sequential(
+            nn.ConvTranspose2d(128, 32, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
         )
 
         self.seg_dec3 = nn.Sequential(
-            nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm2d(32),
-            nn.ReLU(),
-            nn.Conv2d(32, num_classes, kernel_size=3, padding=1)  # Final conv for logits
+            nn.ConvTranspose2d(64, num_classes, kernel_size=4, stride=2, padding=1),
         )
         
         # Depth decoder
         self.depth_dec1 = nn.Sequential(
-            nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(),
-            nn.Conv2d(128, 128, kernel_size=3, padding=1),  # Additional conv
-            nn.BatchNorm2d(128),
-            nn.ReLU()
-        )
-        
-        self.depth_dec2 = nn.Sequential(
             nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1),
             nn.BatchNorm2d(64),
             nn.ReLU(),
-            nn.Conv2d(64, 64, kernel_size=3, padding=1),  # Additional conv
-            nn.BatchNorm2d(64),
-            nn.ReLU()
         )
         
-        self.depth_dec3 = nn.Sequential(
+        self.depth_dec2 = nn.Sequential(
             nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1),
             nn.BatchNorm2d(32),
             nn.ReLU(),
-            nn.Conv2d(32, 1, kernel_size=3, padding=1),
+        )
+        
+        self.depth_dec3 = nn.Sequential(
+            nn.ConvTranspose2d(32, 1, kernel_size=4, stride=2, padding=1),
             nn.Sigmoid()  # Constrain depth predictions to [0,1]
         )
 
@@ -245,20 +225,22 @@ class Detector(torch.nn.Module):
         z = (x - self.input_mean[None, :, None, None]) / self.input_std[None, :, None, None]
         
         # Encoder
-        z = self.enc1(z)
-        z = self.enc2(z)
-        z = self.enc3(z)
+        z1 = self.enc1(z)
+        z2 = self.enc2(z1)
+        z3 = self.enc3(z2)
 
         # Segmentation decoder
-        z_seg = self.seg_dec1(z)
+        z_seg = self.seg_dec1(z3)
+        z_seg = torch.cat((z_seg, z2), dim=1)
         z_seg = self.seg_dec2(z_seg)
+        z_seg = torch.cat((z_seg, z1), dim=1)
         logits = self.seg_dec3(z_seg)
 
         # Depth decoder
-        z_depth = self.depth_dec1(z)
+        z_depth = self.depth_dec1(z3)
         z_depth = self.depth_dec2(z_depth)
         depth = self.depth_dec3(z_depth).squeeze(1)
-        
+
         return logits, depth
 
     def predict(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
