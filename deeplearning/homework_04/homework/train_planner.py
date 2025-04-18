@@ -17,6 +17,35 @@ from .datasets.road_dataset import load_data
 from . import metrics
 
 
+class WeightedL1Loss(nn.Module):
+    """
+    Custom L1 loss function that applies different weights to lateral and longitudinal errors.
+    L1 loss is more robust to outliers than MSE loss.
+    
+    Args:
+        lateral_weight: Weight multiplier for lateral errors (index 0 in this codebase)
+        longitudinal_weight: Weight multiplier for longitudinal errors (index 1 in this codebase)
+    """
+    def __init__(self, lateral_weight=2.0, longitudinal_weight=1.0):
+        super().__init__()
+        self.lateral_weight = lateral_weight
+        self.longitudinal_weight = longitudinal_weight
+        
+    def forward(self, pred, target):
+        # Calculate absolute error (L1)
+        abs_error = torch.abs(pred - target)
+        
+        # Apply weights according to the project's convention:
+        # index 0 = lateral, index 1 = longitudinal
+        weights = torch.ones_like(abs_error)
+        weights[..., 0] = self.lateral_weight      # index 0 is lateral in this codebase
+        weights[..., 1] = self.longitudinal_weight # index 1 is longitudinal in this codebase
+        
+        weighted_abs_error = abs_error * weights
+        
+        return weighted_abs_error.mean()
+
+
 def train(
     exp_dir: str = "logs",
     model_name: str = "mlp_planner",
@@ -79,10 +108,11 @@ def train(
     )
 
     # Loss function, optimizer, and scheduler
-    loss_func = nn.MSELoss()  # Mean Squared Error for waypoint prediction
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-4)
+    # Using a weighted L1 loss with stronger emphasis on lateral errors
+    loss_func = WeightedL1Loss(lateral_weight=3.0, longitudinal_weight=1.0)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-3)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode='min', patience=5, factor=0.5
+        optimizer, mode='min', patience=3, factor=0.5
     )
 
     # Create metrics
@@ -197,9 +227,6 @@ def train(
                 f"Epoch {epoch + 1:2d}/{num_epoch:2d}: "
                 f"train_loss={avg_train_loss:.4f}, "
                 f"val_loss={avg_val_loss:.4f}, "
-                # f"train_l1_error={train_metrics_avg.get('l1_error', 0):.4f}, "
-                # f"train_long_error={train_metrics_avg.get('longitudinal_error', 0):.4f}, "
-                # f"train_lat_error={train_metrics_avg.get('lateral_error', 0):.4f}, "
                 f"val_l1_error={val_metrics_avg.get('l1_error', 0):.4f}, "
                 f"val_long_error={val_metrics_avg.get('longitudinal_error', 0):.4f}, "
                 f"val_lat_error={val_metrics_avg.get('lateral_error', 0):.4f}"
