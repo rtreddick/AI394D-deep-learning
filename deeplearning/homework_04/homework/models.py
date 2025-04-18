@@ -13,16 +13,37 @@ class MLPPlanner(nn.Module):
         self,
         n_track: int = 10,
         n_waypoints: int = 3,
+        hidden_dim: int = 128,
+        num_layers: int = 3,
     ):
         """
         Args:
             n_track (int): number of points in each side of the track
             n_waypoints (int): number of waypoints to predict
+            hidden_dim (int): size of hidden layers
+            num_layers (int): number of hidden layers
         """
         super().__init__()
 
         self.n_track = n_track
         self.n_waypoints = n_waypoints
+        
+        # Input dimension: Each track has n_track points with 2 coordinates (x, y) for both left and right
+        input_dim = n_track * 2 * 2
+        output_dim = n_waypoints * 2
+        
+        # Create MLP layers
+        layers = []
+        layers.append(nn.Linear(input_dim, hidden_dim))
+        layers.append(nn.ReLU())
+        
+        for _ in range(num_layers - 1):
+            layers.append(nn.Linear(hidden_dim, hidden_dim))
+            layers.append(nn.ReLU())
+        
+        layers.append(nn.Linear(hidden_dim, output_dim))
+        
+        self.mlp = nn.Sequential(*layers)
 
     def forward(
         self,
@@ -43,7 +64,26 @@ class MLPPlanner(nn.Module):
         Returns:
             torch.Tensor: future waypoints with shape (b, n_waypoints, 2)
         """
-        raise NotImplementedError
+        batch_size = track_left.shape[0]
+        
+        # Flatten the track points
+        # (b, n_track, 2) -> (b, n_track * 2)
+        left_flat = track_left.reshape(batch_size, -1)
+        right_flat = track_right.reshape(batch_size, -1)
+        
+        # Concatenate left and right track points
+        # (b, n_track * 2) + (b, n_track * 2) -> (b, n_track * 4)
+        track_flat = torch.cat([left_flat, right_flat], dim=1)
+        
+        # Process through MLP
+        # (b, n_track * 4) -> (b, n_waypoints * 2)
+        output = self.mlp(track_flat)
+        
+        # Reshape output to desired waypoints format
+        # (b, n_waypoints * 2) -> (b, n_waypoints, 2)
+        waypoints = output.reshape(batch_size, self.n_waypoints, 2)
+        
+        return waypoints
 
 
 class TransformerPlanner(nn.Module):

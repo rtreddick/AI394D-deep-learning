@@ -49,3 +49,49 @@ class PlannerMetric:
             "lateral_error": float(lateral_error),
             "num_samples": self.total,
         }
+
+@torch.no_grad()
+def compute_metrics(
+    preds: torch.Tensor,
+    targets: torch.Tensor,
+    valid_mask: torch.Tensor,
+) -> dict:
+    """
+    Computes metrics for waypoint prediction.
+    
+    Args:
+        preds (torch.Tensor): (b, n, 2) tensor of predicted waypoints
+        targets (torch.Tensor): (b, n, 2) tensor of target waypoints
+        valid_mask (torch.Tensor): (b, n) boolean mask for valid waypoints
+    
+    Returns:
+        dict: Dictionary containing various metrics
+    """
+    # Calculate errors
+    error = (preds - targets).abs()
+    
+    # Apply mask to consider only valid waypoints
+    error_masked = error * valid_mask.unsqueeze(-1)
+    
+    # Count valid waypoints
+    num_valid = valid_mask.sum().item()
+    
+    if num_valid == 0:
+        return {
+            "waypoint_error": torch.tensor(0.0),
+            "longitudinal_error": torch.tensor(0.0),
+            "lateral_error": torch.tensor(0.0),
+            "num_valid": torch.tensor(0)
+        }
+    
+    # Calculate average errors
+    longitudinal_error = error_masked[..., 0].sum() / num_valid
+    lateral_error = error_masked[..., 1].sum() / num_valid
+    waypoint_error = error_masked.sum() / (num_valid * 2)  # Average across x and y
+    
+    return {
+        "waypoint_error": waypoint_error,
+        "longitudinal_error": longitudinal_error,
+        "lateral_error": lateral_error,
+        "num_valid": torch.tensor(num_valid)
+    }
