@@ -121,6 +121,8 @@ def train(
 
     global_step = 0
     best_val_loss = float('inf')  # Initialize best validation loss
+    patience_counter = 0
+    patience = 3  # Number of epochs to wait before early stopping
     
     # Training loop
     for epoch in range(num_epoch):
@@ -236,6 +238,14 @@ def train(
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
             torch.save(model.state_dict(), log_dir / f"{model_name}_best.th")
+            patience_counter = 0  # Reset patience counter
+        else:
+            patience_counter += 1  # Increment patience counter
+            
+        # Early stopping check
+        if patience_counter >= patience:
+            print(f"Early stopping triggered after {epoch + 1} epochs")
+            break
     
     # Save final model for grading
     save_model(model)
@@ -250,7 +260,7 @@ if __name__ == "__main__":
     
     parser.add_argument("--exp_dir", type=str, default="logs")
     parser.add_argument("--model_name", type=str, default="mlp_planner")
-    parser.add_argument("--num_epoch", type=int, default=30)
+    parser.add_argument("--num_epoch", type=int, default=20)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--hidden_dim", type=int, default=128)
