@@ -85,11 +85,19 @@ def train(
         optimizer, mode='min', patience=5, factor=0.5
     )
 
+    # Create metrics
+    train_metrics = metrics.PlannerMetric()
+    val_metrics = metrics.PlannerMetric()
+
     global_step = 0
-    best_val_loss = float('inf')
+    best_val_loss = float('inf')  # Initialize best validation loss
     
     # Training loop
     for epoch in range(num_epoch):
+        # Reset metrics at beginning of epoch
+        train_metrics.reset()
+        val_metrics.reset()
+
         model.train()
         train_losses = []
         
@@ -120,11 +128,17 @@ def train(
             
             train_losses.append(loss.item())
             global_step += 1
+            
+            # Update training metrics using the PlannerMetric.add() method
+            train_metrics.add(
+                preds=pred_waypoints.detach(),
+                labels=waypoints,
+                labels_mask=waypoints_mask
+            )
         
         # Validation phase
         model.eval()
         val_losses = []
-        val_metrics = {}
         
         with torch.no_grad():
             for batch in val_data:
@@ -145,24 +159,22 @@ def train(
                 loss = loss_func(masked_pred, masked_target)
                 val_losses.append(loss.item())
                 
-                # Compute metrics for this batch
-                batch_metrics = metrics.compute_metrics(
-                    preds=pred_waypoints.cpu(),
-                    targets=waypoints.cpu(),
-                    valid_mask=waypoints_mask.cpu()
+                # Update validation metrics using PlannerMetric.add() method
+                val_metrics.add(
+                    preds=pred_waypoints,
+                    labels=waypoints,
+                    labels_mask=waypoints_mask
                 )
-                
-                # Aggregate batch metrics
-                for k, v in batch_metrics.items():
-                    val_metrics[k] = val_metrics.get(k, 0) + v.item()
-        
-        # Compute average metrics
-        for k in val_metrics:
-            val_metrics[k] /= len(val_data)
         
         # Average losses
         avg_train_loss = sum(train_losses) / len(train_losses)
         avg_val_loss = sum(val_losses) / len(val_losses)
+        
+        # Calculate average training metrics
+        train_metrics_avg = train_metrics.compute()
+
+        # Compute average metrics
+        val_metrics_avg = val_metrics.compute()
         
         # Update learning rate based on validation loss
         scheduler.step(avg_val_loss)
@@ -171,7 +183,12 @@ def train(
         logger.add_scalar("train/loss", avg_train_loss, global_step)
         logger.add_scalar("val/loss", avg_val_loss, global_step)
         
-        for metric_name, metric_value in val_metrics.items():
+        # Log training metrics
+        for metric_name, metric_value in train_metrics_avg.items():
+            logger.add_scalar(f"train/{metric_name}", metric_value, global_step)
+            
+        # Log validation metrics
+        for metric_name, metric_value in val_metrics_avg.items():
             logger.add_scalar(f"val/{metric_name}", metric_value, global_step)
         
         # Print progress
@@ -180,7 +197,8 @@ def train(
                 f"Epoch {epoch + 1:2d}/{num_epoch:2d}: "
                 f"train_loss={avg_train_loss:.4f}, "
                 f"val_loss={avg_val_loss:.4f}, "
-                f"val_waypoint_error={val_metrics.get('waypoint_error', 0):.4f}"
+                f"val_l1_error={val_metrics_avg.get('l1_error', 0):.4f}, "
+                f"val_lat_error={val_metrics_avg.get('lateral_error', 0):.4f}"
             )
         
         # Save model if validation loss improves
