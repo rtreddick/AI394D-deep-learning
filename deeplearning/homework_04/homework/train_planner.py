@@ -21,10 +21,10 @@ def train(
     exp_dir: str = "logs",
     model_name: str = "mlp_planner",
     num_epoch: int = 30,
-    lr: float = 1e-3,
-    batch_size: int = 128,
-    hidden_dim: int = 128,
-    num_layers: int = 3,
+    lr: float = 5e-4,
+    batch_size: int = 64,
+    hidden_dim: int = 256,
+    num_layers: int = 4,
     n_track: int = 10,
     n_waypoints: int = 3,
     seed: int = 2024,
@@ -197,9 +197,9 @@ def train(
                 f"Epoch {epoch + 1:2d}/{num_epoch:2d}: "
                 f"train_loss={avg_train_loss:.4f}, "
                 f"val_loss={avg_val_loss:.4f}, "
-                f"train_l1_error={train_metrics_avg.get('l1_error', 0):.4f}, "
-                f"train_long_error={train_metrics_avg.get('longitudinal_error', 0):.4f}, "
-                f"train_lat_error={train_metrics_avg.get('lateral_error', 0):.4f}, "
+                # f"train_l1_error={train_metrics_avg.get('l1_error', 0):.4f}, "
+                # f"train_long_error={train_metrics_avg.get('longitudinal_error', 0):.4f}, "
+                # f"train_lat_error={train_metrics_avg.get('lateral_error', 0):.4f}, "
                 f"val_l1_error={val_metrics_avg.get('l1_error', 0):.4f}, "
                 f"val_long_error={val_metrics_avg.get('longitudinal_error', 0):.4f}, "
                 f"val_lat_error={val_metrics_avg.get('lateral_error', 0):.4f}"
@@ -224,10 +224,10 @@ if __name__ == "__main__":
     parser.add_argument("--exp_dir", type=str, default="logs")
     parser.add_argument("--model_name", type=str, default="mlp_planner")
     parser.add_argument("--num_epoch", type=int, default=30)
-    parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--batch_size", type=int, default=128)
-    parser.add_argument("--hidden_dim", type=int, default=128)
-    parser.add_argument("--num_layers", type=int, default=3)
+    parser.add_argument("--lr", type=float, default=5e-4)
+    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--hidden_dim", type=int, default=256)
+    parser.add_argument("--num_layers", type=int, default=4)
     parser.add_argument("--n_track", type=int, default=10)
     parser.add_argument("--n_waypoints", type=int, default=3)
     parser.add_argument("--seed", type=int, default=2024)

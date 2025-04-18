@@ -13,8 +13,9 @@ class MLPPlanner(nn.Module):
         self,
         n_track: int = 10,
         n_waypoints: int = 3,
-        hidden_dim: int = 128,
-        num_layers: int = 3,
+        hidden_dim: int = 256,
+        num_layers: int = 4,
+        dropout_rate: float = 0.2,  # New parameter for dropout rate
     ):
         """
         Args:
@@ -22,6 +23,7 @@ class MLPPlanner(nn.Module):
             n_waypoints (int): number of waypoints to predict
             hidden_dim (int): size of hidden layers
             num_layers (int): number of hidden layers
+            dropout_rate (float): dropout probability for regularization
         """
         super().__init__()
 
@@ -32,14 +34,18 @@ class MLPPlanner(nn.Module):
         input_dim = n_track * 2 * 2
         output_dim = n_waypoints * 2
         
-        # Create MLP layers
+        # Create MLP layers with dropout and batch normalization for regularization
         layers = []
         layers.append(nn.Linear(input_dim, hidden_dim))
+        layers.append(nn.BatchNorm1d(hidden_dim))
         layers.append(nn.ReLU())
+        layers.append(nn.Dropout(dropout_rate))  # Add dropout after activation
         
         for _ in range(num_layers - 1):
             layers.append(nn.Linear(hidden_dim, hidden_dim))
+            layers.append(nn.BatchNorm1d(hidden_dim))
             layers.append(nn.ReLU())
+            layers.append(nn.Dropout(dropout_rate))  # Add dropout after each activation
         
         layers.append(nn.Linear(hidden_dim, output_dim))
         
