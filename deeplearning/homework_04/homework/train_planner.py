@@ -197,7 +197,11 @@ def train(
                 f"Epoch {epoch + 1:2d}/{num_epoch:2d}: "
                 f"train_loss={avg_train_loss:.4f}, "
                 f"val_loss={avg_val_loss:.4f}, "
+                f"train_l1_error={train_metrics_avg.get('l1_error', 0):.4f}, "
+                f"train_long_error={train_metrics_avg.get('longitudinal_error', 0):.4f}, "
+                f"train_lat_error={train_metrics_avg.get('lateral_error', 0):.4f}, "
                 f"val_l1_error={val_metrics_avg.get('l1_error', 0):.4f}, "
+                f"val_long_error={val_metrics_avg.get('longitudinal_error', 0):.4f}, "
                 f"val_lat_error={val_metrics_avg.get('lateral_error', 0):.4f}"
             )
         
