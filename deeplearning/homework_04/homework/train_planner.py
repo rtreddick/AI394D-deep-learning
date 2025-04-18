@@ -49,11 +49,11 @@ class WeightedL1Loss(nn.Module):
 def train(
     exp_dir: str = "logs",
     model_name: str = "mlp_planner",
-    num_epoch: int = 30,
-    lr: float = 5e-4,
-    batch_size: int = 64,
-    hidden_dim: int = 256,
-    num_layers: int = 4,
+    num_epoch: int = 20,
+    lr: float = 1e-3,
+    batch_size: int = 128,
+    hidden_dim: int = 128,
+    num_layers: int = 3,
     n_track: int = 10,
     n_waypoints: int = 3,
     seed: int = 2024,
@@ -109,10 +109,10 @@ def train(
 
     # Loss function, optimizer, and scheduler
     # Using a weighted L1 loss with stronger emphasis on lateral errors
-    loss_func = WeightedL1Loss(lateral_weight=3.0, longitudinal_weight=1.0)
+    loss_func = WeightedL1Loss(lateral_weight=5.0, longitudinal_weight=1.0)  # Increased from 3.0 to 5.0
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-3)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode='min', patience=3, factor=0.5
+        optimizer, mode='min', patience=2, factor=0.3  # More aggressive LR reduction
     )
 
     # Create metrics
@@ -251,10 +251,10 @@ if __name__ == "__main__":
     parser.add_argument("--exp_dir", type=str, default="logs")
     parser.add_argument("--model_name", type=str, default="mlp_planner")
     parser.add_argument("--num_epoch", type=int, default=30)
-    parser.add_argument("--lr", type=float, default=5e-4)
-    parser.add_argument("--batch_size", type=int, default=64)
-    parser.add_argument("--hidden_dim", type=int, default=256)
-    parser.add_argument("--num_layers", type=int, default=4)
+    parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--batch_size", type=int, default=128)
+    parser.add_argument("--hidden_dim", type=int, default=128)
+    parser.add_argument("--num_layers", type=int, default=3)
     parser.add_argument("--n_track", type=int, default=10)
     parser.add_argument("--n_waypoints", type=int, default=3)
     parser.add_argument("--seed", type=int, default=2024)
