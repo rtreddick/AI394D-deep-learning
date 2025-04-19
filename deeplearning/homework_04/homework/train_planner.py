@@ -51,7 +51,7 @@ def train(
     model_name: str = "mlp_planner",
     num_epoch: int = 20,
     lr: float = 1e-3,
-    batch_size: int = 128,
+    batch_size: int = 64,
     hidden_dim: int = 128,
     num_layers: int = 3,
     n_track: int = 10,
@@ -109,7 +109,7 @@ def train(
 
     # Loss function, optimizer, and scheduler
     # Using a weighted L1 loss with stronger emphasis on lateral errors
-    loss_func = WeightedL1Loss(lateral_weight=5.0, longitudinal_weight=1.0)  # Increased from 3.0 to 5.0
+    loss_func = WeightedL1Loss(lateral_weight=5.0, longitudinal_weight=1.0)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-3)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode='min', patience=2, factor=0.3  # More aggressive LR reduction
@@ -247,6 +247,45 @@ def train(
             print(f"Early stopping triggered after {epoch + 1} epochs")
             break
     
+    # Print final metrics using the last validation metrics we already calculated
+    print("\n======= FINAL MODEL METRICS =======")
+    print(f"L1 error: {val_metrics_avg.get('l1_error', 0):.4f}")
+    print(f"Longitudinal error: {val_metrics_avg.get('longitudinal_error', 0):.4f}")
+    print(f"Lateral error: {val_metrics_avg.get('lateral_error', 0):.4f}")
+    print("==================================\n")
+    
+    # Load the best model before saving for grading
+    best_model_path = log_dir / f"{model_name}_best.th"
+    if best_model_path.exists():
+        print(f"Loading best model from {best_model_path}")
+        model.load_state_dict(torch.load(best_model_path))
+        
+        # Run validation again to get metrics for the best model
+        model.eval()
+        best_val_metrics = metrics.PlannerMetric()
+        
+        with torch.no_grad():
+            for batch in val_data:
+                track_left = batch["track_left"].to(device)
+                track_right = batch["track_right"].to(device)
+                waypoints = batch["waypoints"].to(device)
+                waypoints_mask = batch["waypoints_mask"].to(device)
+                
+                pred_waypoints = model(track_left=track_left, track_right=track_right)
+                
+                best_val_metrics.add(
+                    preds=pred_waypoints,
+                    labels=waypoints,
+                    labels_mask=waypoints_mask
+                )
+        
+        best_metrics = best_val_metrics.compute()
+        print("\n======= BEST MODEL METRICS =======")
+        print(f"L1 error: {best_metrics.get('l1_error', 0):.4f}")
+        print(f"Longitudinal error: {best_metrics.get('longitudinal_error', 0):.4f}")
+        print(f"Lateral error: {best_metrics.get('lateral_error', 0):.4f}")
+        print("==================================\n")
+    
     # Save final model for grading
     save_model(model)
     
@@ -262,7 +301,7 @@ if __name__ == "__main__":
     parser.add_argument("--model_name", type=str, default="mlp_planner")
     parser.add_argument("--num_epoch", type=int, default=20)
     parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--batch_size", type=int, default=128)
+    parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--hidden_dim", type=int, default=128)
     parser.add_argument("--num_layers", type=int, default=3)
     parser.add_argument("--n_track", type=int, default=10)

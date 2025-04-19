@@ -15,7 +15,7 @@ class MLPPlanner(nn.Module):
         n_waypoints: int = 3,
         hidden_dim: int = 128,
         num_layers: int = 3,
-        dropout_rate: float = 0.3,  # New parameter for dropout rate
+        dropout_rate: float = 0.3,
     ):
         """
         Args:
