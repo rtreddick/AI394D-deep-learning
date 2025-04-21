@@ -28,7 +28,7 @@ class WeightedL1Loss(nn.Module):
         lateral_weight: Weight multiplier for lateral errors (index 0 in this codebase)
         longitudinal_weight: Weight multiplier for longitudinal errors (index 1 in this codebase)
     """
-    def __init__(self, lateral_weight=2.0, longitudinal_weight=1.0):
+    def __init__(self, lateral_weight=5.0, longitudinal_weight=1.0):
         super().__init__()
         self.lateral_weight = lateral_weight
         self.longitudinal_weight = longitudinal_weight
@@ -49,20 +49,20 @@ class WeightedL1Loss(nn.Module):
 
 
 def train(
-    exp_dir: str = "logs",
-    model_name: str = "mlp_planner",
-    num_epoch: int = 20,
-    lr: float = 1e-4,  # Updated default learning rate
-    batch_size: int = 64,
-    n_track: int = 10,
-    n_waypoints: int = 3,
-    seed: int = 2024,
-    d_model: int = 64,
-    nhead: int = 4,
-    num_decoder_layers: int = 2,
-    dim_feedforward: int = 128,
-    dropout: float = 0.1,
-    activation: str = "relu",
+    exp_dir: str,
+    model_name: str,
+    num_epoch: int,
+    lr: float,
+    batch_size: int,
+    n_track: int,
+    n_waypoints: int,
+    seed: int,
+    d_model: int,
+    nhead: int,
+    num_decoder_layers: int,
+    dim_feedforward: int,
+    dropout: float,
+    activation: str,
     **kwargs,
 ):
     # Set up device (CUDA, MPS, or CPU)
@@ -130,8 +130,6 @@ def train(
 
     global_step = 0
     best_val_loss = float('inf')  # Initialize best validation loss
-    patience_counter = 0
-    patience = 3  # Number of epochs to wait before early stopping
     
     # Training loop
     for epoch in range(num_epoch):
@@ -249,14 +247,14 @@ def train(
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
             torch.save(model.state_dict(), log_dir / f"{model_name}_best.th")
-            patience_counter = 0  # Reset patience counter
-        else:
-            patience_counter += 1  # Increment patience counter
+            # patience_counter = 0  # Reset patience counter - No longer needed
+        # else:
+            # patience_counter += 1  # Increment patience counter - No longer needed
             
-        # Early stopping check
-        if patience_counter >= patience:
-            print(f"Early stopping triggered after {epoch + 1} epochs")
-            break
+        # Early stopping check - Disabled
+        # if patience_counter >= patience:
+        #     print(f"Early stopping triggered after {epoch + 1} epochs")
+        #     break
     
     # Print final metrics using the last validation metrics we already calculated
     print("\n======= FINAL MODEL METRICS =======")
@@ -312,7 +310,7 @@ if __name__ == "__main__":
     parser.add_argument("--exp_dir", type=str, default="logs")
     parser.add_argument("--model_name", type=str, default="transformer_planner") # Changed default
     parser.add_argument("--num_epoch", type=int, default=20)
-    parser.add_argument("--lr", type=float, default=1e-4)  # Updated default learning rate
+    parser.add_argument("--lr", type=float, default=1e-3)  # Updated default learning rate
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--seed", type=int, default=2024)
     
@@ -322,13 +320,11 @@ if __name__ == "__main__":
 
     # Transformer specific arguments
     parser.add_argument("--d_model", type=int, default=64, help="Dimension of the transformer model")
-    parser.add_argument("--nhead", type=int, default=4, help="Number of attention heads")
-    parser.add_argument("--num_decoder_layers", type=int, default=2, help="Number of decoder layers")
-    parser.add_argument("--dim_feedforward", type=int, default=128, help="Dimension of the feedforward network")
-    parser.add_argument("--dropout", type=float, default=0.1, help="Dropout rate for transformer")
+    parser.add_argument("--nhead", type=int, default=2, help="Number of attention heads")
+    parser.add_argument("--num_decoder_layers", type=int, default=4, help="Number of decoder layers")
+    parser.add_argument("--dim_feedforward", type=int, default=256, help="Dimension of the feedforward network")
+    parser.add_argument("--dropout", type=float, default=0.3, help="Dropout rate for transformer")
     parser.add_argument("--activation", type=str, default="relu", help="Activation function (relu or gelu")
-
-    # Removed MLP specific arguments: hidden_dim, num_layers, dropout_rate
     
     args = parser.parse_args()
     train(**vars(args))

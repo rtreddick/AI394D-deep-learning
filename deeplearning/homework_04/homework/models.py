@@ -12,11 +12,11 @@ INPUT_STD = [0.2064, 0.1944, 0.2252]
 class MLPPlanner(nn.Module):
     def __init__(
         self,
-        n_track: int = 10,
-        n_waypoints: int = 3,
-        hidden_dim: int = 128,
-        num_layers: int = 3,
-        dropout_rate: float = 0.3,
+        n_track: int,
+        n_waypoints: int,
+        hidden_dim: int,
+        num_layers: int,
+        dropout_rate: float,
     ):
         """
         Args:
@@ -96,14 +96,14 @@ class MLPPlanner(nn.Module):
 class TransformerPlanner(nn.Module):
     def __init__(
         self,
-        n_track: int = 10,
-        n_waypoints: int = 3,
-        d_model: int = 64,       # Dimension of the transformer model
-        nhead: int = 4,          # Number of attention heads
-        num_decoder_layers: int = 2, # Number of decoder layers
-        dim_feedforward: int = 128, # Dimension of the feedforward network
-        dropout: float = 0.1,    # Dropout rate
-        activation: str = "relu", # Activation function for the decoder
+        n_track: int,
+        n_waypoints: int,
+        d_model: int,       # Dimension of the transformer model
+        nhead: int,          # Number of attention heads
+        num_decoder_layers: int, # Number of decoder layers
+        dim_feedforward: int, # Dimension of the feedforward network
+        dropout: float,    # Dropout rate
+        activation: str, # Activation function for the decoder
     ):
         """
         Transformer-based planner using cross-attention.
@@ -178,6 +178,13 @@ class TransformerPlanner(nn.Module):
         # (B, n_track * 2, 2) -> (B, n_track * 2, d_model)
         memory = self.input_proj(track_combined)
 
+        # Apply BatchNorm1d to input projection
+        # Permute: (B, Seq, Dim) -> (B, Dim, Seq) for BatchNorm1d
+        memory = memory.permute(0, 2, 1)
+        memory = self.input_bn(memory)
+        # Permute back: (B, Dim, Seq) -> (B, Seq, Dim)
+        memory = memory.permute(0, 2, 1)
+
         # 3. Add positional encoding
         # Create position indices (0, 1, ..., input_seq_len-1)
         pos_indices = torch.arange(self.input_seq_len, device=device)
@@ -198,6 +205,13 @@ class TransformerPlanner(nn.Module):
         # Input shapes: tgt=(B, n_waypoints, d_model), memory=(B, input_seq_len, d_model)
         # Output shape: (B, n_waypoints, d_model)
         decoder_output = self.decoder(tgt, memory)
+
+        # Apply BatchNorm1d to decoder output
+        # Permute: (B, Seq, Dim) -> (B, Dim, Seq) for BatchNorm1d
+        decoder_output = decoder_output.permute(0, 2, 1)
+        decoder_output = self.output_bn(decoder_output)
+        # Permute back: (B, Dim, Seq) -> (B, Seq, Dim)
+        decoder_output = decoder_output.permute(0, 2, 1)
 
         # 6. Project decoder output to 2D waypoints
         # (B, n_waypoints, d_model) -> (B, n_waypoints, 2)
