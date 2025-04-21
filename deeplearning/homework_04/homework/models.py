@@ -151,10 +151,59 @@ class TransformerPlanner(nn.Module):
         # Projects the decoder output (d_model) to 2D waypoint coordinates
         self.output_proj = nn.Linear(d_model, 2)
 
+    def forward(
+        self,
+        track_left: torch.Tensor, # Shape: (B, n_track, 2)
+        track_right: torch.Tensor, # Shape: (B, n_track, 2)
+        **kwargs,
+    ) -> torch.Tensor:
+        """
+        Predicts waypoints using the Transformer decoder.
 
-    # --- forward method will be defined later ---
-    # def forward(self, track_left: torch.Tensor, track_right: torch.Tensor, **kwargs) -> torch.Tensor:
-    #     raise NotImplementedError
+        Args:
+            track_left (torch.Tensor): Left track boundary points (B, n_track, 2).
+            track_right (torch.Tensor): Right track boundary points (B, n_track, 2).
+
+        Returns:
+            torch.Tensor: Predicted future waypoints (B, n_waypoints, 2).
+        """
+        batch_size = track_left.shape[0]
+        device = track_left.device
+
+        # 1. Concatenate left and right track points
+        # (B, n_track, 2) + (B, n_track, 2) -> (B, n_track * 2, 2)
+        track_combined = torch.cat([track_left, track_right], dim=1)
+
+        # 2. Project track points into d_model dimension
+        # (B, n_track * 2, 2) -> (B, n_track * 2, d_model)
+        memory = self.input_proj(track_combined)
+
+        # 3. Add positional encoding
+        # Create position indices (0, 1, ..., input_seq_len-1)
+        pos_indices = torch.arange(self.input_seq_len, device=device)
+        # Get positional embeddings (input_seq_len, d_model)
+        pos_encoding = self.pos_embed(pos_indices)
+        # Add positional encoding to memory (broadcasts across batch)
+        # (B, input_seq_len, d_model) + (input_seq_len, d_model) -> (B, input_seq_len, d_model)
+        memory = memory + pos_encoding
+
+        # 4. Prepare waypoint queries (tgt)
+        # Get base query embeddings (n_waypoints, d_model)
+        query_embeddings = self.query_embed.weight
+        # Expand queries for the batch
+        # (n_waypoints, d_model) -> (1, n_waypoints, d_model) -> (B, n_waypoints, d_model)
+        tgt = query_embeddings.unsqueeze(0).repeat(batch_size, 1, 1)
+
+        # 5. Pass through Transformer Decoder
+        # Input shapes: tgt=(B, n_waypoints, d_model), memory=(B, input_seq_len, d_model)
+        # Output shape: (B, n_waypoints, d_model)
+        decoder_output = self.decoder(tgt, memory)
+
+        # 6. Project decoder output to 2D waypoints
+        # (B, n_waypoints, d_model) -> (B, n_waypoints, 2)
+        waypoints = self.output_proj(decoder_output)
+
+        return waypoints
 
 
 class CNNPlanner(torch.nn.Module):

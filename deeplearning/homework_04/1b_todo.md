@@ -31,14 +31,14 @@ This list breaks down the steps required to implement and train the `Transformer
         -   Crucially, set `batch_first=True` if your tensors are `(Batch, Seq, Dim)`.
 -   [X] **Implement Output Head:**
     -   [X] In `__init__`, define a final `nn.Linear` layer to project the decoder output features (dimension `d_model`) to the required waypoint coordinate dimension (2).
--   [ ] **Implement `forward` Method:**
-    -   [ ] Accept `track_left` (`B, n_track, 2`) and `track_right` (`B, n_track, 2`).
-    -   [ ] Process inputs through the encoding layer(s) to get the key/value tensor (`memory`: `B, N, d_model`).
-    -   [ ] **(If using)** Add positional encoding to `memory`.
-    -   [ ] Generate the query tensor (`tgt`) from `self.query_embed`. You'll need to expand it for the batch size: `self.query_embed.weight.unsqueeze(0).repeat(batch_size, 1, 1)`. Shape: `(B, n_waypoints, d_model)`.
-    -   [ ] Pass `tgt` and `memory` through the `nn.TransformerDecoder` or `nn.TransformerDecoderLayer`(s).
-    -   [ ] Pass the decoder output through the final linear head.
-    -   [ ] Ensure the output tensor has the correct shape `(B, n_waypoints, 2)`.
+-   [X] **Implement `forward` Method:**
+    -   [X] Accept `track_left` (`B, n_track, 2`) and `track_right` (`B, n_track, 2`).
+    -   [X] Process inputs through the encoding layer(s) to get the key/value tensor (`memory`: `B, N, d_model`).
+    -   [X] **(If using)** Add positional encoding to `memory`.
+    -   [X] Generate the query tensor (`tgt`) from `self.query_embed`. You'll need to expand it for the batch size: `self.query_embed.weight.unsqueeze(0).repeat(batch_size, 1, 1)`. Shape: `(B, n_waypoints, d_model)`.
+    -   [X] Pass `tgt` and `memory` through the `nn.TransformerDecoder` or `nn.TransformerDecoderLayer`(s).
+    -   [X] Pass the decoder output through the final linear head.
+    -   [X] Ensure the output tensor has the correct shape `(B, n_waypoints, 2)`.
 -   [ ] **Register in `MODEL_FACTORY`:**
     -   [ ] Ensure `transformer_planner` maps to your `TransformerPlanner` class in the `MODEL_FACTORY` dictionary.
 
