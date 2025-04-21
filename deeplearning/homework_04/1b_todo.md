@@ -19,10 +19,12 @@ This list breaks down the steps required to implement and train the `Transformer
     -   [ ] Create the `TransformerPlanner` class inheriting from `torch.nn.Module`.
     -   [ ] Define `__init__` method accepting hyperparameters like `n_track`, `n_waypoints`, `d_model`, `nhead`, `num_decoder_layers`, `dim_feedforward`, `dropout`.
 -   [ ] **Implement Input Encoding:**
-    -   [ ] In `__init__`, define layer(s) to process input track boundaries.
-        -   *Suggestion:* Concatenate `track_left` and `track_right` (`B, n_track * 2, 2`). Flatten the last two dimensions (`B, n_track * 4`). Pass through a `nn.Linear(n_track * 4, d_model)` or a small MLP to project each point pair feature vector to `d_model`. Alternatively, process left/right separately and combine. The goal is to get a tensor representing the track features, e.g., shape `(B, N, d_model)` where `N` is the sequence length of encoded track points (e.g., `N = n_track * 2`).
+    -   [ ] In `__init__`, define layer(s) to process input track boundaries into a sequence of features.
+        -   *Suggestion:* Concatenate `track_left` and `track_right` (`B, n_track * 2, 2`). Process each point pair (or individual point) through a Linear layer or small MLP to project its 2D coordinates (or 4D if paired) into the `d_model` dimension. The goal is to get a tensor representing the track features as a sequence, e.g., shape `(B, N, d_model)` where `N` is the sequence length (e.g., `N = n_track * 2`). This will serve as the `memory` (key/value) for the decoder.
+-   [ ] **Implement Positional Encoding:**
+    -   [ ] Consider adding positional encoding to the encoded track features before passing them to the Transformer decoder. This helps the model understand the order/position of the track points. You can use learned embeddings or fixed sinusoidal encodings.
 -   [ ] **Implement Waypoint Queries:**
-    -   [ ] In `__init__`, initialize `self.query_embed = nn.Embedding(n_waypoints, d_model)`. This will be the learnable "latent array" from Perceiver.
+    -   [ ] In `__init__`, initialize `self.query_embed = nn.Embedding(n_waypoints, d_model)`. This will be the learnable "latent array" from Perceiver, serving as the `tgt` (query) for the decoder.
 -   [ ] **Implement Transformer Decoder / Cross-Attention:**
     -   [ ] In `__init__`, define the Transformer decoder layer(s). Use `nn.TransformerDecoderLayer` and potentially wrap with `nn.TransformerDecoder`.
         -   Set `d_model`, `nhead`, `dim_feedforward`, `dropout`, `activation`.
@@ -32,6 +34,7 @@ This list breaks down the steps required to implement and train the `Transformer
 -   [ ] **Implement `forward` Method:**
     -   [ ] Accept `track_left` (`B, n_track, 2`) and `track_right` (`B, n_track, 2`).
     -   [ ] Process inputs through the encoding layer(s) to get the key/value tensor (`memory`: `B, N, d_model`).
+    -   [ ] **(If using)** Add positional encoding to `memory`.
     -   [ ] Generate the query tensor (`tgt`) from `self.query_embed`. You'll need to expand it for the batch size: `self.query_embed.weight.unsqueeze(0).repeat(batch_size, 1, 1)`. Shape: `(B, n_waypoints, d_model)`.
     -   [ ] Pass `tgt` and `memory` through the `nn.TransformerDecoder` or `nn.TransformerDecoderLayer`(s).
     -   [ ] Pass the decoder output through the final linear head.
@@ -43,7 +46,8 @@ This list breaks down the steps required to implement and train the `Transformer
 
 -   [ ] **Create/Adapt Training Script:**
     -   [ ] Duplicate `homework/train_planner.py` to `homework/train_transformer.py` or create a new script.
-    -   [ ] Update `argparse` to include Transformer-specific hyperparameters (`d_model`, `nhead`, `num_decoder_layers`, etc.) and set the default `model_name` to `"transformer_planner"`.
+    -   [ ] Update `argparse` to include Transformer-specific hyperparameters (`d_model`, `nhead`, `num_decoder_layers`, `dim_feedforward`, `dropout`) and set the default `model_name` to `"transformer_planner"`.
+        -   *Suggestion for defaults:* `d_model=64`, `nhead=4`, `num_decoder_layers=2`, `dim_feedforward=128`, `dropout=0.1`.
     -   [ ] Modify the `load_model` call to pass the new Transformer hyperparameters.
 -   [ ] **Instantiate Model & Components:**
     -   [ ] Ensure the script instantiates `TransformerPlanner` correctly using the arguments.
