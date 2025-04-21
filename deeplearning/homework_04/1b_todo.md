@@ -4,22 +4,22 @@ This list breaks down the steps required to implement and train the `Transformer
 
 ## Phase 1: Setup & Preparation
 
--   [ ] **Verify Environment:**
-    -   [ ] Ensure the `drive_data` directory exists in `deeplearning/homework_04/` and contains the dataset. If not, run the download command from `README.md`.
-    -   [ ] Confirm Python environment is set up (e.g., using `poetry install` based on `pyproject.toml` or `pip install -r requirements.txt`).
--   [ ] **Review Existing Code:**
-    -   [ ] Familiarize yourself with the `MLPPlanner` implementation in `homework/models.py`.
-    -   [ ] Review the existing training script (`homework/train_planner.py`) or the Colab notebook structure for training loops, data loading, metrics, and saving.
-    -   [ ] Understand how `homework/datasets/road_dataset.py` and `homework/datasets/road_transforms.py:EgoTrackProcessor` provide the `track_left`, `track_right`, `waypoints`, and `waypoints_mask` data.
-    -   [ ] Review `homework/metrics.py:PlannerMetric` for calculating evaluation metrics.
+-   [X] **Verify Environment:**
+    -   [X] Ensure the `drive_data` directory exists in `deeplearning/homework_04/` and contains the dataset. If not, run the download command from `README.md`.
+    -   [X] Confirm Python environment is set up (e.g., using `poetry install` based on `pyproject.toml` or `pip install -r requirements.txt`).
+-   [X] **Review Existing Code:**
+    -   [X] Familiarize yourself with the `MLPPlanner` implementation in `homework/models.py`.
+    -   [X] Review the existing training script (`homework/train_planner.py`) or the Colab notebook structure for training loops, data loading, metrics, and saving.
+    -   [X] Understand how `homework/datasets/road_dataset.py` and `homework/datasets/road_transforms.py:EgoTrackProcessor` provide the `track_left`, `track_right`, `waypoints`, and `waypoints_mask` data.
+    -   [X] Review `homework/metrics.py:PlannerMetric` for calculating evaluation metrics.
 
 ## Phase 2: Model Implementation (`homework/models.py`)
 
--   [ ] **Define `TransformerPlanner` Class:**
-    -   [ ] Create the `TransformerPlanner` class inheriting from `torch.nn.Module`.
-    -   [ ] Define `__init__` method accepting hyperparameters like `n_track`, `n_waypoints`, `d_model`, `nhead`, `num_decoder_layers`, `dim_feedforward`, `dropout`.
--   [ ] **Implement Input Encoding:**
-    -   [ ] In `__init__`, define layer(s) to process input track boundaries into a sequence of features.
+-   [X] **Define `TransformerPlanner` Class:**
+    -   [X] Create the `TransformerPlanner` class inheriting from `torch.nn.Module`.
+    -   [X] Define `__init__` method accepting hyperparameters like `n_track`, `n_waypoints`, `d_model`, `nhead`, `num_decoder_layers`, `dim_feedforward`, `dropout`.
+-   [X] **Implement Input Encoding:**
+    -   [X] In `__init__`, define layer(s) to process input track boundaries into a sequence of features.
         -   *Suggestion:* Concatenate `track_left` and `track_right` (`B, n_track * 2, 2`). Process each point pair (or individual point) through a Linear layer or small MLP to project its 2D coordinates (or 4D if paired) into the `d_model` dimension. The goal is to get a tensor representing the track features as a sequence, e.g., shape `(B, N, d_model)` where `N` is the sequence length (e.g., `N = n_track * 2`). This will serve as the `memory` (key/value) for the decoder.
 -   [ ] **Implement Positional Encoding:**
     -   [ ] Consider adding positional encoding to the encoded track features before passing them to the Transformer decoder. This helps the model understand the order/position of the track points. You can use learned embeddings or fixed sinusoidal encodings.

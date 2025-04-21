@@ -2,6 +2,7 @@ from pathlib import Path
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F  # Added import
 
 HOMEWORK_DIR = Path(__file__).resolve().parent
 INPUT_MEAN = [0.2788, 0.2657, 0.2629]
@@ -97,35 +98,50 @@ class TransformerPlanner(nn.Module):
         self,
         n_track: int = 10,
         n_waypoints: int = 3,
-        d_model: int = 64,
+        d_model: int = 64,       # Dimension of the transformer model
+        nhead: int = 4,          # Number of attention heads
+        num_decoder_layers: int = 2, # Number of decoder layers
+        dim_feedforward: int = 128, # Dimension of the feedforward network
+        dropout: float = 0.1,    # Dropout rate
     ):
+        """
+        Transformer-based planner using cross-attention.
+
+        Args:
+            n_track (int): Number of points in each side of the track boundary input.
+            n_waypoints (int): Number of future waypoints to predict.
+            d_model (int): The dimensionality of the embeddings and transformer layers.
+            nhead (int): The number of heads in the multiheadattention models.
+            num_decoder_layers (int): The number of sub-decoder-layers in the decoder.
+            dim_feedforward (int): The dimension of the feedforward network model.
+            dropout (float): The dropout value.
+        """
         super().__init__()
 
         self.n_track = n_track
         self.n_waypoints = n_waypoints
+        self.d_model = d_model
+        self.input_seq_len = n_track * 2 # Combined length of left and right track points
 
+        # 1. Input Encoding Layer
+        self.input_proj = nn.Linear(2, d_model) # Project 2D coordinates to d_model
+
+        # 2. Positional Encoding for Track Points (Learnable)
+        # We have n_track points for left and n_track for right, concatenated
+        self.pos_embed = nn.Embedding(self.input_seq_len, d_model)
+
+        # 3. Waypoint Query Embeddings (Learnable)
+        # These act as the initial state for the decoder (the 'latent array')
         self.query_embed = nn.Embedding(n_waypoints, d_model)
 
-    def forward(
-        self,
-        track_left: torch.Tensor,
-        track_right: torch.Tensor,
-        **kwargs,
-    ) -> torch.Tensor:
-        """
-        Predicts waypoints from the left and right boundaries of the track.
+        # --- Transformer Decoder and Output Head will be added next ---
 
-        During test time, your model will be called with
-        model(track_left=..., track_right=...), so keep the function signature as is.
+        # Placeholder for forward method
+        # raise NotImplementedError
 
-        Args:
-            track_left (torch.Tensor): shape (b, n_track, 2)
-            track_right (torch.Tensor): shape (b, n_track, 2)
-
-        Returns:
-            torch.Tensor: future waypoints with shape (b, n_waypoints, 2)
-        """
-        raise NotImplementedError
+    # --- forward method will be defined later ---
+    # def forward(self, track_left: torch.Tensor, track_right: torch.Tensor, **kwargs) -> torch.Tensor:
+    #     raise NotImplementedError
 
 
 class CNNPlanner(torch.nn.Module):
