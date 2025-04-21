@@ -39,8 +39,8 @@ This list breaks down the steps required to implement and train the `Transformer
     -   [X] Pass `tgt` and `memory` through the `nn.TransformerDecoder` or `nn.TransformerDecoderLayer`(s).
     -   [X] Pass the decoder output through the final linear head.
     -   [X] Ensure the output tensor has the correct shape `(B, n_waypoints, 2)`.
--   [ ] **Register in `MODEL_FACTORY`:**
-    -   [ ] Ensure `transformer_planner` maps to your `TransformerPlanner` class in the `MODEL_FACTORY` dictionary.
+-   [X] **Register in `MODEL_FACTORY`:**
+    -   [X] Ensure `transformer_planner` maps to your `TransformerPlanner` class in the `MODEL_FACTORY` dictionary.
 
 ## Phase 3: Training Script (`homework/train_transformer.py`)
 

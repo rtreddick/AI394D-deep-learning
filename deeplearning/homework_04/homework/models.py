@@ -234,7 +234,7 @@ class CNNPlanner(torch.nn.Module):
 
 MODEL_FACTORY = {
     "mlp_planner": MLPPlanner,
-    "transformer_planner": TransformerPlanner,
+    "transformer_planner": TransformerPlanner, # Added TransformerPlanner
     "cnn_planner": CNNPlanner,
 }
 
