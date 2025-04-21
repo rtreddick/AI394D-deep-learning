@@ -142,7 +142,8 @@ class TransformerPlanner(nn.Module):
             dim_feedforward=dim_feedforward,
             dropout=dropout,
             activation=activation,
-            batch_first=True  # Important: Ensures input/output shapes are (Batch, Seq, Dim)
+            batch_first=True,  # Important: Ensures input/output shapes are (Batch, Seq, Dim)
+            norm_first=True,  # Apply normalization before the attention and feedforward layers
         )
         # Stack multiple decoder layers
         self.decoder = nn.TransformerDecoder(decoder_layer, num_layers=num_decoder_layers)
@@ -178,13 +179,6 @@ class TransformerPlanner(nn.Module):
         # (B, n_track * 2, 2) -> (B, n_track * 2, d_model)
         memory = self.input_proj(track_combined)
 
-        # Apply BatchNorm1d to input projection
-        # Permute: (B, Seq, Dim) -> (B, Dim, Seq) for BatchNorm1d
-        memory = memory.permute(0, 2, 1)
-        memory = self.input_bn(memory)
-        # Permute back: (B, Dim, Seq) -> (B, Seq, Dim)
-        memory = memory.permute(0, 2, 1)
-
         # 3. Add positional encoding
         # Create position indices (0, 1, ..., input_seq_len-1)
         pos_indices = torch.arange(self.input_seq_len, device=device)
@@ -205,13 +199,6 @@ class TransformerPlanner(nn.Module):
         # Input shapes: tgt=(B, n_waypoints, d_model), memory=(B, input_seq_len, d_model)
         # Output shape: (B, n_waypoints, d_model)
         decoder_output = self.decoder(tgt, memory)
-
-        # Apply BatchNorm1d to decoder output
-        # Permute: (B, Seq, Dim) -> (B, Dim, Seq) for BatchNorm1d
-        decoder_output = decoder_output.permute(0, 2, 1)
-        decoder_output = self.output_bn(decoder_output)
-        # Permute back: (B, Dim, Seq) -> (B, Seq, Dim)
-        decoder_output = decoder_output.permute(0, 2, 1)
 
         # 6. Project decoder output to 2D waypoints
         # (B, n_waypoints, d_model) -> (B, n_waypoints, 2)
