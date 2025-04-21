@@ -103,6 +103,7 @@ class TransformerPlanner(nn.Module):
         num_decoder_layers: int = 2, # Number of decoder layers
         dim_feedforward: int = 128, # Dimension of the feedforward network
         dropout: float = 0.1,    # Dropout rate
+        activation: str = "relu", # Activation function for the decoder
     ):
         """
         Transformer-based planner using cross-attention.
@@ -115,6 +116,7 @@ class TransformerPlanner(nn.Module):
             num_decoder_layers (int): The number of sub-decoder-layers in the decoder.
             dim_feedforward (int): The dimension of the feedforward network model.
             dropout (float): The dropout value.
+            activation (str): The activation function of decoder intermediate layer, relu or gelu.
         """
         super().__init__()
 
@@ -127,17 +129,28 @@ class TransformerPlanner(nn.Module):
         self.input_proj = nn.Linear(2, d_model) # Project 2D coordinates to d_model
 
         # 2. Positional Encoding for Track Points (Learnable)
-        # We have n_track points for left and n_track for right, concatenated
         self.pos_embed = nn.Embedding(self.input_seq_len, d_model)
 
         # 3. Waypoint Query Embeddings (Learnable)
-        # These act as the initial state for the decoder (the 'latent array')
         self.query_embed = nn.Embedding(n_waypoints, d_model)
 
-        # --- Transformer Decoder and Output Head will be added next ---
+        # 4. Transformer Decoder Layer(s)
+        # Create a single decoder layer configuration
+        decoder_layer = nn.TransformerDecoderLayer(
+            d_model=d_model,
+            nhead=nhead,
+            dim_feedforward=dim_feedforward,
+            dropout=dropout,
+            activation=activation,
+            batch_first=True  # Important: Ensures input/output shapes are (Batch, Seq, Dim)
+        )
+        # Stack multiple decoder layers
+        self.decoder = nn.TransformerDecoder(decoder_layer, num_layers=num_decoder_layers)
 
-        # Placeholder for forward method
-        # raise NotImplementedError
+        # 5. Output Head
+        # Projects the decoder output (d_model) to 2D waypoint coordinates
+        self.output_proj = nn.Linear(d_model, 2)
+
 
     # --- forward method will be defined later ---
     # def forward(self, track_left: torch.Tensor, track_right: torch.Tensor, **kwargs) -> torch.Tensor:
