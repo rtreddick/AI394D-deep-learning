@@ -1,6 +1,8 @@
 """
 Usage:
     python3 -m homework.train_planner --your_args here
+
+Used GitHub Copilot for assistance.
 """
 
 import argparse
