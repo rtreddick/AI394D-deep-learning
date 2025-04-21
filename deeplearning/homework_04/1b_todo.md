@@ -44,43 +44,43 @@ This list breaks down the steps required to implement and train the `Transformer
 
 ## Phase 3: Training Script (`homework/train_transformer.py`)
 
--   [ ] **Create/Adapt Training Script:**
-    -   [ ] Duplicate `homework/train_planner.py` to `homework/train_transformer.py` or create a new script.
-    -   [ ] Update `argparse` to include Transformer-specific hyperparameters (`d_model`, `nhead`, `num_decoder_layers`, `dim_feedforward`, `dropout`) and set the default `model_name` to `"transformer_planner"`.
+-   [X] **Create/Adapt Training Script:**
+    -   [X] Duplicate `homework/train_planner.py` to `homework/train_transformer.py` or create a new script.
+    -   [X] Update `argparse` to include Transformer-specific hyperparameters (`d_model`, `nhead`, `num_decoder_layers`, `dim_feedforward`, `dropout`) and set the default `model_name` to `"transformer_planner"`.
         -   *Suggestion for defaults:* `d_model=64`, `nhead=4`, `num_decoder_layers=2`, `dim_feedforward=128`, `dropout=0.1`.
-    -   [ ] Modify the `load_model` call to pass the new Transformer hyperparameters.
--   [ ] **Instantiate Model & Components:**
-    -   [ ] Ensure the script instantiates `TransformerPlanner` correctly using the arguments.
-    -   [ ] Set up `RoadDataset` loaders (train/val) using `state_only` transform pipeline.
--   [ ] **Loss Function:**
-    -   [ ] Choose a loss function (e.g., `nn.MSELoss`, `nn.L1Loss`, or the `WeightedL1Loss` from `train_planner.py`).
-    -   [ ] **Important:** Apply the `waypoints_mask` correctly during loss calculation to ignore invalid waypoints. `loss = loss_func(pred_waypoints[waypoints_mask], waypoints[waypoints_mask])` or multiply predictions/targets by the mask before calculating loss if the loss function expects full tensors.
--   [ ] **Optimizer & Scheduler:**
-    -   [ ] Choose an optimizer (e.g., `torch.optim.AdamW` is often good for Transformers).
-    -   [ ] Consider using a learning rate scheduler (e.g., `ReduceLROnPlateau` or a warmup scheduler).
--   [ ] **Implement Training Loop:**
-    -   [ ] Iterate through epochs and batches.
-    -   [ ] Move data to the correct `device`.
-    -   [ ] Perform forward pass: `pred_waypoints = model(track_left=..., track_right=...)`.
-    -   [ ] Calculate loss (applying mask).
-    -   [ ] Perform backward pass (`loss.backward()`).
-    -   [ ] Optimizer step (`optimizer.step()`).
-    -   [ ] Zero gradients (`optimizer.zero_grad()`).
--   [ ] **Implement Validation Loop:**
-    -   [ ] Run periodically (e.g., end of each epoch).
-    -   [ ] Use `torch.no_grad()`.
-    -   [ ] Calculate validation loss (applying mask).
-    -   [ ] Calculate metrics using `PlannerMetric.add()` and `PlannerMetric.compute()`.
--   [ ] **Logging:**
-    -   [ ] Set up TensorBoard logging (`torch.utils.tensorboard.SummaryWriter`).
-    -   [ ] Log training loss, validation loss, and validation metrics (L1, longitudinal, lateral errors) per epoch/step.
-    -   [ ] Log learning rate if using a scheduler.
--   [ ] **Model Checkpointing:**
-    -   [ ] Save the model state dict (`model.state_dict()`) periodically, especially when validation performance improves (e.g., lowest validation loss or best lateral/longitudinal error).
-    -   [ ] Keep track of the best model checkpoint path.
--   [ ] **Final Model Saving:**
-    -   [ ] After training, load the *best* saved checkpoint.
-    -   [ ] Use the provided `save_model(model)` function to save the final `transformer_planner.th` file in the `homework/` directory for the grader.
+    -   [X] Modify the `load_model` call to pass the new Transformer hyperparameters.
+-   [X] **Instantiate Model & Components:**
+    -   [X] Ensure the script instantiates `TransformerPlanner` correctly using the arguments.
+    -   [X] Set up `RoadDataset` loaders (train/val) using `state_only` transform pipeline.
+-   [X] **Loss Function:**
+    -   [X] Choose a loss function (e.g., `nn.MSELoss`, `nn.L1Loss`, or the `WeightedL1Loss` from `train_planner.py`).
+    -   [X] **Important:** Apply the `waypoints_mask` correctly during loss calculation to ignore invalid waypoints. `loss = loss_func(pred_waypoints[waypoints_mask], waypoints[waypoints_mask])` or multiply predictions/targets by the mask before calculating loss if the loss function expects full tensors.
+-   [X] **Optimizer & Scheduler:**
+    -   [X] Choose an optimizer (e.g., `torch.optim.AdamW` is often good for Transformers).
+    -   [X] Consider using a learning rate scheduler (e.g., `ReduceLROnPlateau` or a warmup scheduler).
+-   [X] **Implement Training Loop:**
+    -   [X] Iterate through epochs and batches.
+    -   [X] Move data to the correct `device`.
+    -   [X] Perform forward pass: `pred_waypoints = model(track_left=..., track_right=...)`.
+    -   [X] Calculate loss (applying mask).
+    -   [X] Perform backward pass (`loss.backward()`).
+    -   [X] Optimizer step (`optimizer.step()`).
+    -   [X] Zero gradients (`optimizer.zero_grad()`).
+-   [X] **Implement Validation Loop:**
+    -   [X] Run periodically (e.g., end of each epoch).
+    -   [X] Use `torch.no_grad()`.
+    -   [X] Calculate validation loss (applying mask).
+    -   [X] Calculate metrics using `PlannerMetric.add()` and `PlannerMetric.compute()`.
+-   [X] **Logging:**
+    -   [X] Set up TensorBoard logging (`torch.utils.tensorboard.SummaryWriter`).
+    -   [X] Log training loss, validation loss, and validation metrics (L1, longitudinal, lateral errors) per epoch/step.
+    -   [X] Log learning rate if using a scheduler.
+-   [X] **Model Checkpointing:**
+    -   [X] Save the model state dict (`model.state_dict()`) periodically, especially when validation performance improves (e.g., lowest validation loss or best lateral/longitudinal error).
+    -   [X] Keep track of the best model checkpoint path.
+-   [X] **Final Model Saving:**
+    -   [X] After training, load the *best* saved checkpoint.
+    -   [X] Use the provided `save_model(model)` function to save the final `transformer_planner.th` file in the `homework/` directory for the grader.
 
 ## Phase 4: Training & Tuning
 
