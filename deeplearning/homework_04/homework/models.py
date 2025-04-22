@@ -1,3 +1,5 @@
+# Used GitHub Copilot for assistance.
+
 from pathlib import Path
 
 import torch
@@ -98,10 +100,10 @@ class TransformerPlanner(nn.Module):
         self,
         n_track: int = 10,
         n_waypoints: int = 3,
-        d_model: int = 128,
+        d_model: int = 64,
         nhead: int = 4,
         num_decoder_layers: int = 1, # Start with one layer as per notes
-        dim_feedforward: int = 128,
+        dim_feedforward: int = 64,
         dropout: float = 0.1,
     ):
         super().__init__()
@@ -172,6 +174,7 @@ class CNNPlanner(torch.nn.Module):
     def __init__(
         self,
         n_waypoints: int = 3,
+        hidden_dim: int = 128, # Added hidden dimension for FC layers
     ):
         super().__init__()
 
@@ -179,6 +182,34 @@ class CNNPlanner(torch.nn.Module):
 
         self.register_buffer("input_mean", torch.as_tensor(INPUT_MEAN), persistent=False)
         self.register_buffer("input_std", torch.as_tensor(INPUT_STD), persistent=False)
+
+        # Define the CNN backbone
+        self.conv_layers = nn.Sequential(
+            # Input: (B, 3, 96, 128)
+            nn.Conv2d(3, 16, kernel_size=5, stride=2, padding=2), # (B, 16, 48, 64)
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2), # (B, 16, 24, 32)
+
+            nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1), # (B, 32, 24, 32)
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2), # (B, 32, 12, 16)
+
+            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1), # (B, 64, 12, 16)
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2)  # (B, 64, 6, 8)
+        )
+
+        # Calculate the flattened size after conv layers
+        # 64 channels * 6 height * 8 width
+        flattened_size = 64 * 6 * 8
+
+        # Define the fully connected layers
+        self.fc_layers = nn.Sequential(
+            nn.Linear(flattened_size, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, n_waypoints * 2) # Output: (B, n_waypoints * 2)
+        )
+
 
     def forward(self, image: torch.Tensor, **kwargs) -> torch.Tensor:
         """
@@ -188,16 +219,30 @@ class CNNPlanner(torch.nn.Module):
         Returns:
             torch.FloatTensor: future waypoints with shape (b, n, 2)
         """
+        batch_size = image.shape[0]
         x = image
+        # Normalize the image
         x = (x - self.input_mean[None, :, None, None]) / self.input_std[None, :, None, None]
 
-        raise NotImplementedError
+        # Pass through CNN backbone
+        x = self.conv_layers(x) # (B, 64, 6, 8)
+
+        # Flatten the output for FC layers
+        x = x.view(batch_size, -1) # (B, 64 * 6 * 8)
+
+        # Pass through FC layers
+        x = self.fc_layers(x) # (B, n_waypoints * 2)
+
+        # Reshape to the desired output format
+        waypoints = x.view(batch_size, self.n_waypoints, 2) # (B, n_waypoints, 2)
+
+        return waypoints
 
 
 MODEL_FACTORY = {
     "mlp_planner": MLPPlanner,
     "transformer_planner": TransformerPlanner,
-    "cnn_planner": CNNPlanner,
+    "cnn_planner": CNNPlanner, # Added comma
 }
 
 
@@ -209,11 +254,15 @@ def load_model(
     """
     Called by the grader to load a pre-trained model by name
     """
+    if model_name not in MODEL_FACTORY:
+        raise ValueError(f"Model '{model_name}' not found in MODEL_FACTORY")
+
     m = MODEL_FACTORY[model_name](**model_kwargs)
 
     if with_weights:
         model_path = HOMEWORK_DIR / f"{model_name}.th"
-        assert model_path.exists(), f"{model_path.name} not found"
+        if not model_path.exists(): # Check existence properly
+             raise FileNotFoundError(f"{model_path.name} not found") # Use FileNotFoundError
 
         try:
             m.load_state_dict(torch.load(model_path, map_location="cpu"))
@@ -237,17 +286,18 @@ def save_model(model: torch.nn.Module) -> str:
     """
     model_name = None
 
-    for n, m in MODEL_FACTORY.items():
-        if type(model) is m:
+    for n, m_cls in MODEL_FACTORY.items(): # Corrected variable name
+        if isinstance(model, m_cls): # Use isinstance for type checking
             model_name = n
+            break # Found the model name, exit loop
 
     if model_name is None:
-        raise ValueError(f"Model type '{str(type(model))}' not supported")
+        raise ValueError(f"Model type '{type(model).__name__}' not supported") # Improved error message
 
     output_path = HOMEWORK_DIR / f"{model_name}.th"
     torch.save(model.state_dict(), output_path)
 
-    return output_path
+    return str(output_path) # Return string path
 
 
 def calculate_model_size_mb(model: torch.nn.Module) -> float:
