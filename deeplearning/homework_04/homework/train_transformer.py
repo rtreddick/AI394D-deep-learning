@@ -88,10 +88,12 @@ def train(
     )
 
     # Loss function, optimizer, and scheduler
-    optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=0.0)  # Removed weight decay to reduce underfitting
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode='min', patience=2, factor=0.3  # More aggressive LR reduction
-    )
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
+    # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+    #     optimizer, mode='min', patience=2, factor=0.3  # More aggressive LR reduction
+    # )
+    # Use simple unweighted L1 loss for waypoint regression
+    loss_func = nn.L1Loss(reduction='none')
 
     # Create metrics
     train_metrics = metrics.PlannerMetric()
@@ -123,15 +125,15 @@ def train(
             # Forward pass
             pred_waypoints = model(track_left=track_left, track_right=track_right)
             
-            # Compute weighted L1 loss over valid waypoints only
-            mask = waypoints_mask.unsqueeze(-1).float()  # (B, n_waypoints, 1)
-            abs_err = torch.abs(pred_waypoints - waypoints) * mask
-            weights = torch.ones_like(abs_err)
-            weights[..., 0] = 1.0   # lateral weight (equalized)
-            weights[..., 1] = 1.0   # longitudinal weight (equalized)
-            weighted_err = abs_err * weights
-            valid_coords = mask.sum() * 2  # two coords per waypoint
-            loss = weighted_err.sum() / valid_coords
+            # Apply mask to consider only valid waypoints
+            masked_pred = pred_waypoints * waypoints_mask.unsqueeze(-1)
+            masked_target = waypoints * waypoints_mask.unsqueeze(-1)
+            
+            # Compute loss
+            err = loss_func(masked_pred, masked_target)          # (B, n_waypoints, 2)
+            mask_f = waypoints_mask.unsqueeze(-1).float()       # (B, n_waypoints, 1)
+            masked_err = err * mask_f                           # zero out invalid
+            loss = masked_err.sum() / (mask_f.sum() * 2)          # avg over valid coords
             
             # Backward pass and optimization
             loss.backward()
@@ -146,7 +148,7 @@ def train(
                 labels=waypoints,
                 labels_mask=waypoints_mask
             )
-        
+    
         # Validation phase
         model.eval()
         val_losses = []
@@ -161,16 +163,16 @@ def train(
                 
                 # Forward pass
                 pred_waypoints = model(track_left=track_left, track_right=track_right)
-                
-                # Compute weighted L1 loss over valid waypoints only
-                mask = waypoints_mask.unsqueeze(-1).float()  # (B, n_waypoints, 1)
-                abs_err = torch.abs(pred_waypoints - waypoints) * mask
-                weights = torch.ones_like(abs_err)
-                weights[..., 0] = 1.0   # lateral weight (equalized)
-                weights[..., 1] = 1.0   # longitudinal weight (equalized)
-                weighted_err = abs_err * weights
-                valid_coords = mask.sum() * 2  # two coords per waypoint
-                loss = weighted_err.sum() / valid_coords
+
+                # Apply mask to consider only valid waypoints
+                masked_pred = pred_waypoints * waypoints_mask.unsqueeze(-1)
+                masked_target = waypoints * waypoints_mask.unsqueeze(-1)
+                    
+                # Compute loss
+                err = loss_func(masked_pred, masked_target)       # (B, n_waypoints, 2)
+                mask_f = waypoints_mask.unsqueeze(-1).float()    # (B, n_waypoints, 1)
+                masked_err = err * mask_f                        # zero out invalid
+                loss = masked_err.sum() / (mask_f.sum() * 2)       # avg over valid coords
                 val_losses.append(loss.item())
                 
                 # Update validation metrics using PlannerMetric.add() method
@@ -191,7 +193,7 @@ def train(
         val_metrics_avg = val_metrics.compute()
         
         # Update learning rate based on validation loss
-        scheduler.step(avg_val_loss)
+        # scheduler.step(avg_val_loss)
         
         # Logging
         logger.add_scalar("train/loss", avg_train_loss, global_step)
