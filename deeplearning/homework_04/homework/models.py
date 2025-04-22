@@ -100,11 +100,11 @@ class TransformerPlanner(nn.Module):
         self,
         n_track: int = 10,
         n_waypoints: int = 3,
-        d_model: int = 64,
-        nhead: int = 4,
+        d_model: int = 256,
+        nhead: int = 8,
         num_decoder_layers: int = 1, # Start with one layer as per notes
-        dim_feedforward: int = 64,
-        dropout: float = 0.1,
+        dim_feedforward: int = 256,
+        dropout: float = 0.3,
     ):
         super().__init__()
 
