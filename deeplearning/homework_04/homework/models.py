@@ -12,11 +12,11 @@ INPUT_STD = [0.2064, 0.1944, 0.2252]
 class MLPPlanner(nn.Module):
     def __init__(
         self,
-        n_track: int,
-        n_waypoints: int,
-        hidden_dim: int,
-        num_layers: int,
-        dropout_rate: float,
+        n_track: int = 10,
+        n_waypoints: int = 3,
+        hidden_dim: int = 128,
+        num_layers: int = 3,
+        dropout_rate: float = 0.3,
     ):
         """
         Args:
@@ -99,34 +99,73 @@ class TransformerPlanner(nn.Module):
         n_track: int = 10,
         n_waypoints: int = 3,
         d_model: int = 64,
+        nhead: int = 4,
+        num_decoder_layers: int = 1, # Start with one layer as per notes
+        dim_feedforward: int = 256,
+        dropout: float = 0.1,
     ):
         super().__init__()
 
         self.n_track = n_track
         self.n_waypoints = n_waypoints
+        self.d_model = d_model
 
+        # Input embedding layer: projects 2D coordinates to d_model
+        self.input_embed = nn.Linear(2, d_model)
+
+        # Learnable query embeddings for the waypoints
         self.query_embed = nn.Embedding(n_waypoints, d_model)
+
+        # Transformer Decoder Layer setup
+        decoder_layer = nn.TransformerDecoderLayer(
+            d_model=d_model,
+            nhead=nhead,
+            dim_feedforward=dim_feedforward,
+            dropout=dropout,
+            batch_first=True # Ensure batch dimension comes first
+        )
+        # Stacking decoder layers (using nn.TransformerDecoder)
+        self.transformer_decoder = nn.TransformerDecoder(decoder_layer, num_layers=num_decoder_layers)
+
+        # Output projection layer: maps d_model back to 2D coordinates
+        self.output_proj = nn.Linear(d_model, 2)
+
 
     def forward(
         self,
-        track_left: torch.Tensor,
-        track_right: torch.Tensor,
+        track_left: torch.Tensor, # Shape: [B, n_track, 2]
+        track_right: torch.Tensor, # Shape: [B, n_track, 2]
         **kwargs,
     ) -> torch.Tensor:
-        """
-        Predicts waypoints from the left and right boundaries of the track.
+        batch_size = track_left.shape[0]
 
-        During test time, your model will be called with
-        model(track_left=..., track_right=...), so keep the function signature as is.
+        # 1. Embed track boundaries
+        # (B, n_track, 2) -> (B, n_track, d_model)
+        embedded_left = self.input_embed(track_left)
+        embedded_right = self.input_embed(track_right)
 
-        Args:
-            track_left (torch.Tensor): shape (b, n_track, 2)
-            track_right (torch.Tensor): shape (b, n_track, 2)
+        # 2. Concatenate to form memory
+        # (B, n_track, d_model) + (B, n_track, d_model) -> (B, 2 * n_track, d_model)
+        # memory shape: [B, 20, d_model]
+        memory = torch.cat([embedded_left, embedded_right], dim=1)
 
-        Returns:
-            torch.Tensor: future waypoints with shape (b, n_waypoints, 2)
-        """
-        raise NotImplementedError
+        # 3. Prepare query embeddings (tgt)
+        # Get the learnable query weights: [n_waypoints, d_model]
+        query_embeddings = self.query_embed.weight
+        # Expand across batch dimension: [1, n_waypoints, d_model] -> [B, n_waypoints, d_model]
+        # tgt shape: [B, 3, d_model]
+        tgt = query_embeddings.unsqueeze(0).repeat(batch_size, 1, 1)
+
+        # 4. Pass through Transformer Decoder
+        # Input shapes: tgt=[B, n_waypoints, d_model], memory=[B, 2*n_track, d_model]
+        # Output shape: [B, n_waypoints, d_model]
+        output = self.transformer_decoder(tgt, memory)
+
+        # 5. Project to output coordinates
+        # (B, n_waypoints, d_model) -> (B, n_waypoints, 2)
+        waypoints = self.output_proj(output)
+
+        return waypoints # Shape: [B, 3, 2]
 
 
 class CNNPlanner(torch.nn.Module):
@@ -157,7 +196,7 @@ class CNNPlanner(torch.nn.Module):
 
 MODEL_FACTORY = {
     "mlp_planner": MLPPlanner,
-    "perceiver_planner": PerceiverPlanner, # Updated name
+    "transformer_planner": TransformerPlanner,
     "cnn_planner": CNNPlanner,
 }
 

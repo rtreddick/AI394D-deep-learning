@@ -62,7 +62,6 @@ def train(
     num_decoder_layers: int,
     dim_feedforward: int,
     dropout: float,
-    activation: str,
     **kwargs,
 ):
     # Set up device (CUDA, MPS, or CPU)
@@ -94,7 +93,6 @@ def train(
         num_decoder_layers=num_decoder_layers,
         dim_feedforward=dim_feedforward,
         dropout=dropout,
-        activation=activation,
     )
     model = model.to(device)
     model.train()
@@ -324,7 +322,6 @@ if __name__ == "__main__":
     parser.add_argument("--num_decoder_layers", type=int, default=4, help="Number of decoder layers")
     parser.add_argument("--dim_feedforward", type=int, default=128, help="Dimension of the feedforward network")
     parser.add_argument("--dropout", type=float, default=0.2, help="Dropout rate for transformer")
-    parser.add_argument("--activation", type=str, default="relu", help="Activation function (relu or gelu")
     
     args = parser.parse_args()
     train(**vars(args))

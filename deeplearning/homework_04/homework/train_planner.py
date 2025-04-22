@@ -54,10 +54,10 @@ def train(
     num_epoch: int = 20,
     lr: float = 1e-3,
     batch_size: int = 64,
-    hidden_dim: int = 128,
-    num_layers: int = 3,
-    n_track: int = 10,
-    n_waypoints: int = 3,
+    # hidden_dim: int = 128,
+    # num_layers: int = 3,
+    # n_track: int = 10,
+    # n_waypoints: int = 3,
     seed: int = 2024,
     **kwargs,
 ):
@@ -299,16 +299,16 @@ def train(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     
-    parser.add_argument("--exp_dir", type=str, default="logs")
-    parser.add_argument("--model_name", type=str, default="mlp_planner")
-    parser.add_argument("--num_epoch", type=int, default=20)
-    parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--batch_size", type=int, default=64)
-    parser.add_argument("--hidden_dim", type=int, default=128)
-    parser.add_argument("--num_layers", type=int, default=3)
-    parser.add_argument("--n_track", type=int, default=10)
-    parser.add_argument("--n_waypoints", type=int, default=3)
-    parser.add_argument("--seed", type=int, default=2024)
+    # parser.add_argument("--exp_dir", type=str, default="logs")
+    # parser.add_argument("--model_name", type=str, default="mlp_planner")
+    # parser.add_argument("--num_epoch", type=int, default=20)
+    # parser.add_argument("--lr", type=float, default=1e-3)
+    # parser.add_argument("--batch_size", type=int, default=64)
+    # parser.add_argument("--hidden_dim", type=int, default=128)
+    # parser.add_argument("--num_layers", type=int, default=3)
+    # parser.add_argument("--n_track", type=int, default=10)
+    # parser.add_argument("--n_waypoints", type=int, default=3)
+    # parser.add_argument("--seed", type=int, default=2024)
     
     args = parser.parse_args()
     train(**vars(args))
