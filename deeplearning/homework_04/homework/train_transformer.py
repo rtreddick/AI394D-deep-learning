@@ -19,35 +19,6 @@ from .datasets.road_dataset import load_data
 from . import metrics
 
 
-class WeightedL1Loss(nn.Module):
-    """
-    Custom L1 loss function that applies different weights to lateral and longitudinal errors.
-    L1 loss is more robust to outliers than MSE loss.
-    
-    Args:
-        lateral_weight: Weight multiplier for lateral errors (index 0 in this codebase)
-        longitudinal_weight: Weight multiplier for longitudinal errors (index 1 in this codebase)
-    """
-    def __init__(self, lateral_weight=5.0, longitudinal_weight=1.0):
-        super().__init__()
-        self.lateral_weight = lateral_weight
-        self.longitudinal_weight = longitudinal_weight
-        
-    def forward(self, pred, target):
-        # Calculate absolute error (L1)
-        abs_error = torch.abs(pred - target)
-        
-        # Apply weights according to the project's convention:
-        # index 0 = lateral, index 1 = longitudinal
-        weights = torch.ones_like(abs_error)
-        weights[..., 0] = self.lateral_weight      # index 0 is lateral in this codebase
-        weights[..., 1] = self.longitudinal_weight # index 1 is longitudinal in this codebase
-        
-        weighted_abs_error = abs_error * weights
-        
-        return weighted_abs_error.mean()
-
-
 def train(
     exp_dir: str,
     model_name: str,
@@ -117,9 +88,7 @@ def train(
     )
 
     # Loss function, optimizer, and scheduler
-    # Using a weighted L1 loss with stronger emphasis on lateral errors
-    loss_func = WeightedL1Loss(lateral_weight=5.0, longitudinal_weight=1.0)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)  # Updated optimizer to AdamW
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=0.0)  # Removed weight decay to reduce underfitting
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode='min', patience=2, factor=0.3  # More aggressive LR reduction
     )
@@ -154,13 +123,15 @@ def train(
             # Forward pass
             pred_waypoints = model(track_left=track_left, track_right=track_right)
             
-            # Apply mask to consider only valid waypoints
-            mask = waypoints_mask.unsqueeze(-1)
-            masked_pred = pred_waypoints * mask
-            masked_target = waypoints * mask
-            
-            # Compute loss
-            loss = loss_func(masked_pred, masked_target)
+            # Compute weighted L1 loss over valid waypoints only
+            mask = waypoints_mask.unsqueeze(-1).float()  # (B, n_waypoints, 1)
+            abs_err = torch.abs(pred_waypoints - waypoints) * mask
+            weights = torch.ones_like(abs_err)
+            weights[..., 0] = 1.0   # lateral weight (equalized)
+            weights[..., 1] = 1.0   # longitudinal weight (equalized)
+            weighted_err = abs_err * weights
+            valid_coords = mask.sum() * 2  # two coords per waypoint
+            loss = weighted_err.sum() / valid_coords
             
             # Backward pass and optimization
             loss.backward()
@@ -191,13 +162,15 @@ def train(
                 # Forward pass
                 pred_waypoints = model(track_left=track_left, track_right=track_right)
                 
-                # Apply mask to consider only valid waypoints
-                mask = waypoints_mask.unsqueeze(-1)
-                masked_pred = pred_waypoints * mask
-                masked_target = waypoints * mask
-                
-                # Compute loss
-                loss = loss_func(masked_pred, masked_target)
+                # Compute weighted L1 loss over valid waypoints only
+                mask = waypoints_mask.unsqueeze(-1).float()  # (B, n_waypoints, 1)
+                abs_err = torch.abs(pred_waypoints - waypoints) * mask
+                weights = torch.ones_like(abs_err)
+                weights[..., 0] = 1.0   # lateral weight (equalized)
+                weights[..., 1] = 1.0   # longitudinal weight (equalized)
+                weighted_err = abs_err * weights
+                valid_coords = mask.sum() * 2  # two coords per waypoint
+                loss = weighted_err.sum() / valid_coords
                 val_losses.append(loss.item())
                 
                 # Update validation metrics using PlannerMetric.add() method
@@ -307,12 +280,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     
     # Common arguments
-    # parser.add_argument("--exp_dir", type=str, default="logs")
-    # parser.add_argument("--model_name", type=str, default="transformer_planner") # Changed default
-    # parser.add_argument("--num_epoch", type=int, default=20)
-    # parser.add_argument("--lr", type=float, default=1e-3)  # Updated default learning rate
-    # parser.add_argument("--batch_size", type=int, default=64)
-    # parser.add_argument("--seed", type=int, default=2024)
+    parser.add_argument("--exp_dir", type=str, default="logs")
+    parser.add_argument("--model_name", type=str, default="transformer_planner") # Changed default
+    parser.add_argument("--num_epoch", type=int, default=20)
+    parser.add_argument("--lr", type=float, default=1e-3)  # Updated default learning rate
+    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--seed", type=int, default=2024)
     
     # Commented out arguments with defaults in TransformerPlanner
     # # Data related arguments (usually fixed for this task)
