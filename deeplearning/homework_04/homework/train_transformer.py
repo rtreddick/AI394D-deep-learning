@@ -54,14 +54,15 @@ def train(
     num_epoch: int,
     lr: float,
     batch_size: int,
-    n_track: int,
-    n_waypoints: int,
     seed: int,
-    d_model: int,
-    nhead: int,
-    num_decoder_layers: int,
-    dim_feedforward: int,
-    dropout: float,
+    # Commented out arguments with defaults in TransformerPlanner
+    # n_track: int = 10,
+    # n_waypoints: int = 3,
+    # d_model: int = 64,
+    # nhead: int = 4,
+    # num_decoder_layers: int = 1,
+    # dim_feedforward: int = 256,
+    # dropout: float = 0.1,
     **kwargs,
 ):
     # Set up device (CUDA, MPS, or CPU)
@@ -83,16 +84,17 @@ def train(
     logger = tb.SummaryWriter(log_dir)
 
     # Create model using load_model
+    # Pass only necessary args, rely on defaults in the model class
     model = load_model(
         model_name,
         with_weights=False,
-        n_track=n_track,
-        n_waypoints=n_waypoints,
-        d_model=d_model,
-        nhead=nhead,
-        num_decoder_layers=num_decoder_layers,
-        dim_feedforward=dim_feedforward,
-        dropout=dropout,
+        # n_track=n_track, # Commented out
+        # n_waypoints=n_waypoints, # Commented out
+        # d_model=d_model, # Commented out
+        # nhead=nhead, # Commented out
+        # num_decoder_layers=num_decoder_layers, # Commented out
+        # dim_feedforward=dim_feedforward, # Commented out
+        # dropout=dropout, # Commented out
     )
     model = model.to(device)
     model.train()
@@ -305,23 +307,24 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     
     # Common arguments
-    parser.add_argument("--exp_dir", type=str, default="logs")
-    parser.add_argument("--model_name", type=str, default="transformer_planner") # Changed default
-    parser.add_argument("--num_epoch", type=int, default=20)
-    parser.add_argument("--lr", type=float, default=1e-3)  # Updated default learning rate
-    parser.add_argument("--batch_size", type=int, default=64)
-    parser.add_argument("--seed", type=int, default=2024)
+    # parser.add_argument("--exp_dir", type=str, default="logs")
+    # parser.add_argument("--model_name", type=str, default="transformer_planner") # Changed default
+    # parser.add_argument("--num_epoch", type=int, default=20)
+    # parser.add_argument("--lr", type=float, default=1e-3)  # Updated default learning rate
+    # parser.add_argument("--batch_size", type=int, default=64)
+    # parser.add_argument("--seed", type=int, default=2024)
     
-    # Data related arguments (usually fixed for this task)
-    parser.add_argument("--n_track", type=int, default=10)
-    parser.add_argument("--n_waypoints", type=int, default=3)
+    # Commented out arguments with defaults in TransformerPlanner
+    # # Data related arguments (usually fixed for this task)
+    # parser.add_argument("--n_track", type=int, default=10)
+    # parser.add_argument("--n_waypoints", type=int, default=3)
 
-    # Transformer specific arguments
-    parser.add_argument("--d_model", type=int, default=128, help="Dimension of the transformer model")
-    parser.add_argument("--nhead", type=int, default=4, help="Number of attention heads")
-    parser.add_argument("--num_decoder_layers", type=int, default=4, help="Number of decoder layers")
-    parser.add_argument("--dim_feedforward", type=int, default=128, help="Dimension of the feedforward network")
-    parser.add_argument("--dropout", type=float, default=0.2, help="Dropout rate for transformer")
+    # # Transformer specific arguments
+    # parser.add_argument("--d_model", type=int, default=64, help="Dimension of the transformer model") # Default in model is 64
+    # parser.add_argument("--nhead", type=int, default=4, help="Number of attention heads") # Default in model is 4
+    # parser.add_argument("--num_decoder_layers", type=int, default=1, help="Number of decoder layers") # Default in model is 1
+    # parser.add_argument("--dim_feedforward", type=int, default=256, help="Dimension of the feedforward network") # Default in model is 256
+    # parser.add_argument("--dropout", type=float, default=0.1, help="Dropout rate for transformer") # Default in model is 0.1
     
     args = parser.parse_args()
     train(**vars(args))
